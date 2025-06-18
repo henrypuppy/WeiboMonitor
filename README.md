@@ -49,8 +49,8 @@
 
 1. **克隆项目**
 ```bash
-git clone <repository-url>
-cd WeiboMonitor_Claude
+git clone https://github.com/henrypuppy/WeiboMonitor.git
+cd WeiboMonitor
 ```
 
 2. **安装依赖**
@@ -80,7 +80,7 @@ python weibo_scraper.py
 
 #### 修改监控目标
 ```python
-# 在weibo_scraper.py的main()函数中修改
+# 在config.py中修改
 monitor = WeiboMonitor(target_user="目标用户名")
 
 weibo_urls = [
@@ -89,14 +89,6 @@ weibo_urls = [
 ]
 ```
 
-#### 调整分析参数
-```python
-# 修改问题识别关键词
-problem_keywords = ['问题', 'bug', '故障', '不能用', '坏了']
-
-# 调整相似度阈值
-similarity_threshold = 0.6
-```
 
 ### 定时任务设置
 
@@ -106,14 +98,8 @@ similarity_threshold = 0.6
 3. 设置触发器为"每天"
 4. 操作选择"启动程序"，程序路径指向Python.exe，参数为脚本路径
 
-#### Linux Cron任务
-```bash
-# 编辑crontab
-crontab -e
 
-# 添加每日9点执行的任务
-0 9 * * * /usr/bin/python3 /path/to/weibo_scraper.py
-```
+
 
 ## 报告功能说明
 
@@ -135,10 +121,8 @@ crontab -e
 WeiboMonitor_Claude/
 ├── weibo_scraper.py          # 主要爬虫和分析脚本
 ├── complete_report.html      # 完整报告模板
-├── weibo_monitor_report.html # 基础报告模板
 ├── requirements.txt          # Python依赖包
 ├── README.md                # 项目说明文档
-├── screenshots/             # 截图保存目录
 ├── reports/                 # 生成报告保存目录
 └── data/                    # 原始数据保存目录
 ```
