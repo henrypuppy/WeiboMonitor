@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微博用户反馈监控报告 - 小米可穿戴设备</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --xiaomi-orange: #FF6700;
+            --xiaomi-dark: #333333;
+            --xiaomi-light: #F5F5F5;
+            --danger-red: #EF4444;
+        }
+        
+        .xiaomi-gradient {
+            background: linear-gradient(135deg, var(--xiaomi-orange), #FF8533);
+        }
+        
+        .problem-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .problem-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .severity-critical { border-left-color: var(--danger-red); }
+        .severity-high { border-left-color: #F59E0B; }
+        .severity-medium { border-left-color: #3B82F6; }
+        .severity-low { border-left-color: #10B981; }
+        
+        .chart-container { position: relative; height: 300px; }
+        
+        .screenshot-modal {
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%; max-height: 90%;
+        }
+        
+        .modal-content img { width: 100%; height: auto; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- 密码保护模态框 -->
+    <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">访问验证</h2>
+            <p class="text-gray-600 mb-6 text-center">请输入访问密码以查看监控报告</p>
+            <input type="password" id="passwordInput" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="请输入密码">
+            <button onclick="checkPassword()" class="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg transition duration-200">确认</button>
+            <p id="passwordError" class="text-red-500 text-sm mt-2 hidden">密码错误，请重试</p>
+        </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div id="mainContent" class="hidden">
+        <!-- 头部区域 -->
+        <header class="xiaomi-gradient text-white shadow-lg">
+            <div class="container mx-auto px-6 py-6">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div>
+                        <h1 class="text-3xl font-bold mb-2">微博用户反馈监控报告</h1>
+                        <p class="text-orange-100">小米可穿戴设备 - 张雷总监微博监控</p>
+                    </div>
+                    <div class="mt-4 md:mt-0 text-right">
+                        <div class="text-lg font-semibold" id="reportDate">2024-01-15</div>
+                        <div class="text-sm text-orange-100">最后更新时间</div>
+                    </div>
+                </div>
+                
+                <!-- 统计概览 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold" id="validProblems">23</div>
+                        <div class="text-sm text-orange-100">有效问题</div>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold" id="criticalIssues">5</div>
+                        <div class="text-sm text-orange-100">严重问题</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主体内容 -->
+        <main class="container mx-auto px-6 py-8">
+            <!-- 数据可视化区域 -->
+            <section class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">问题分析概览</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 问题严重程度分布 -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">问题严重程度分布</h3>
+                        <div class="chart-container">
+                            <canvas id="severityChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 问题类型分布 -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">问题类型分布</h3>
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 趋势图 -->
+                <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">问题趋势分析</h3>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 问题详情列表 -->
+            <section class="mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">问题详情列表</h2>
+                    <div class="flex space-x-2">
+                        <select id="severityFilter" class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <option value="all">所有严重程度</option>
+                            <option value="critical">严重</option>
+                            <option value="high">重要</option>
+                            <option value="medium">一般</option>
+                            <option value="low">建议</option>
+                        </select>
+                        <select id="categoryFilter" class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <option value="all">所有类型</option>
+                            <option value="hardware">硬件问题</option>
+                            <option value="software">软件问题</option>
+                            <option value="ui">界面问题</option>
+                            <option value="feature">功能建议</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="problemsList" class="space-y-4">
+                    <!-- 问题卡片将通过JavaScript动态生成 -->
+                </div>
+            </section>
+
+            <!-- 改进建议区 -->
+            <section class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">TOP5 高价值问题改进建议</h2>
+                <div id="suggestionsList" class="space-y-6">
+                    <!-- 建议将通过JavaScript动态生成 -->
+                </div>
+            </section>
+
+            <!-- 数据附录 -->
+            <section>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">完整数据表格</h2>
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-4 border-b">
+                        <input type="text" id="searchInput" placeholder="搜索问题..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full" id="dataTable">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">问题描述</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">严重程度</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">出现频率</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="dataTableBody">
+                                <!-- 数据行将通过JavaScript动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 截图查看模态框 -->
+    <div id="screenshotModal" class="screenshot-modal">
+        <div class="modal-content">
+            <img id="modalImage" src="" alt="评论截图">
+        </div>
+    </div>
+
+    <script>
+        // 密码验证函数
+        function checkPassword() {
+            const password = document.getElementById('passwordInput').value;
+            const correctPassword = 'xiaomi2025';
+            
+            if (password === correctPassword) {
+                document.getElementById('passwordModal').style.display = 'none';
+                document.getElementById('mainContent').classList.remove('hidden');
+                initializeReport();
+            } else {
+                document.getElementById('passwordError').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('passwordError').classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        // 模拟数据
+        const mockProblems = [
+            {
+                id: 1,
+                description: "小米手环7心率监测不准确，运动时经常出现异常数值",
+                severity: "critical",
+                category: "hardware",
+                frequency: 15,
+                timestamp: "2024-01-15 09:30",
+                user: "用户***123",
+                likes: 23,
+                screenshot: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaIquWbvuekuuS+izwvdGV4dD48L3N2Zz4=",
+                suggestion: "优化电池管理算法，增加省电模式选项，延长续航时间"
+            },
+            {
+                id: 3,
+                description: "米家APP中手环数据同步经常失败，需要重启APP才能解决",
+                severity: "high",
+                category: "software",
+                frequency: 8,
+                timestamp: "2024-01-16 11:22",
+                user: "用户***789",
+                likes: 15,
+                screenshot: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaIquWbvuekuuS+izwvdGV4dD48L3N2Zz4=",
+                suggestion: "重构数据同步机制，增加断线重连和数据缓存功能"
+            },
+            {
+                id: 4,
+                description: "手环表盘商店加载速度太慢，经常卡在加载页面",
+                severity: "medium",
+                category: "ui",
+                frequency: 6,
+                timestamp: "2024-01-16 14:35",
+                user: "用户***012",
+                likes: 9,
+                screenshot: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii0+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaIquWbvuekuuS+izwvdGV4dD48L3N2Zz4=",
+                suggestion: "优化CDN分发，增加图片预加载和缓存机制"
+            },
+            {
+                id: 5,
+                description: "希望增加更多运动模式，特别是瑜伽和普拉提",
+                severity: "low",
+                category: "feature",
+                frequency: 4,
+                timestamp: "2024-01-17 16:20",
+                user: "用户***345",
+                likes: 12,
+                screenshot: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaIquWbvuekuuS+izwvdGV4dD48L3N2Zz4=",
+                suggestion: "研发新的运动算法，增加瑜伽、普拉提等静态运动监测"
+            }
+        ];
+
+        // 初始化报告
+        function initializeReport() {
+            updateSummaryStats();
+            initializeCharts();
+            renderProblemsList();
+            renderSuggestions();
+            renderDataTable();
+            setupEventListeners();
+        }
+
+        // 更新统计数据
+        function updateSummaryStats() {
+            document.getElementById('reportDate').textContent = new Date().toLocaleDateString('zh-CN');
+            document.getElementById('validProblems').textContent = mockProblems.length;
+            document.getElementById('criticalIssues').textContent = mockProblems.filter(p => p.severity === 'critical').length;
+        }
+
+        // 初始化图表
+        function initializeCharts() {
+            // 严重程度分布图
+            const severityCtx = document.getElementById('severityChart').getContext('2d');
+            const severityData = {
+                critical: mockProblems.filter(p => p.severity === 'critical').length,
+                high: mockProblems.filter(p => p.severity === 'high').length,
+                medium: mockProblems.filter(p => p.severity === 'medium').length,
+                low: mockProblems.filter(p => p.severity === 'low').length
+            };
+            
+            new Chart(severityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['严重', '重要', '一般', '建议'],
+                    datasets: [{
+                        data: [severityData.critical, severityData.high, severityData.medium, severityData.low],
+                        backgroundColor: ['#EF4444', '#F59E0B', '#3B82F6', '#10B981'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // 问题类型分布图
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            const categoryData = {
+                hardware: mockProblems.filter(p => p.category === 'hardware').length,
+                software: mockProblems.filter(p => p.category === 'software').length,
+                ui: mockProblems.filter(p => p.category === 'ui').length,
+                feature: mockProblems.filter(p => p.category === 'feature').length
+            };
+            
+            new Chart(categoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['硬件问题', '软件问题', '界面问题', '功能建议'],
+                    datasets: [{
+                        data: [categoryData.hardware, categoryData.software, categoryData.ui, categoryData.feature],
+                        backgroundColor: '#FF6700',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // 趋势图
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+
+            // 根据问题日期统计每日新增问题数量
+            const dailyProblems = {};
+            mockProblems.forEach(p => {
+                const date = new Date(p.timestamp).toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' });
+                dailyProblems[date] = (dailyProblems[date] || 0) + 1;
+            });
+
+            // 将统计结果转换为图表所需格式并按日期排序
+            const trendLabels = Object.keys(dailyProblems).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+            const trendData = trendLabels.map(label => dailyProblems[label]);
+
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [{
+                        label: '新增问题',
+                        data: trendData,
+                        borderColor: '#FF6700',
+                        backgroundColor: 'rgba(255, 103, 0, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: Math.max(...trendData) + 1 // Ensure y-axis scales properly
+                        }
+                    }
+                }
+            });
+        }
+
+        // 渲染问题列表
+        function renderProblemsList(filteredProblems = mockProblems) {
+            const container = document.getElementById('problemsList');
+            container.innerHTML = '';
+            
+            filteredProblems.forEach(problem => {
+                const card = document.createElement('div');
+                card.className = `problem-card bg-white rounded-lg shadow-md p-6 severity-${problem.severity}`;
+                
+                const severityLabels = {
+                    critical: '严重',
+                    high: '重要',
+                    medium: '一般',
+                    low: '建议'
+                };
+                
+                const categoryLabels = {
+                    hardware: '硬件问题',
+                    software: '软件问题',
+                    ui: '界面问题',
+                    feature: '功能建议'
+                };
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex space-x-2">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                                problem.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                                problem.severity === 'high' ? 'bg-yellow-100 text-yellow-800' :
+                                problem.severity === 'medium' ? 'bg-blue-100 text-blue-800' :
+                                'bg-green-100 text-green-800'
+                            }">
+                                ${severityLabels[problem.severity]}
+                            </span>
+                            <span class="px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800 rounded-full">
+                                ${categoryLabels[problem.category]}
+                            </span>
+                        </div>
+                        <div class="text-sm text-gray-500">${problem.timestamp}</div>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3">${problem.description}</h3>
+                    
+                    <div class="flex justify-between items-center text-sm text-gray-600">
+                        <div>
+                            <span>反馈用户: ${problem.user}</span>
+                            <span class="mx-2">•</span>
+                            <span>出现频率: ${problem.frequency}次</span>
+                            <span class="mx-2">•</span>
+                            <span>点赞数: ${problem.likes}</span>
+                        </div>
+                        <button onclick="viewScreenshot('${problem.screenshot}')" class="text-orange-600 hover:text-orange-800 font-medium">
+                            查看截图
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // 渲染改进建议
+        function renderSuggestions() {
+            const container = document.getElementById('suggestionsList');
+            const top5Problems = mockProblems.slice(0, 5);
+            
+            top5Problems.forEach((problem, index) => {
+                const suggestion = document.createElement('div');
+                suggestion.className = 'bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500';
+                
+                suggestion.innerHTML = `
+                     <div class="flex items-start space-x-4">
+                         <div class="flex-shrink-0 w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold">
+                             ${index + 1}
+                         </div>
+                         <div class="flex-1">
+                             <h3 class="text-lg font-semibold text-gray-800 mb-2">${problem.description}</h3>
+                             <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                                 <h4 class="font-medium text-gray-700 mb-2">改进建议：</h4>
+                                 <p class="text-gray-600">${problem.suggestion}</p>
+                             </div>
+                             <div class="flex space-x-4 text-sm text-gray-500">
+                                 <span>出现频率: ${problem.frequency}次</span>
+                                 <span>点赞数: ${problem.likes}</span>
+                                 <span>预期效果: 提升用户满意度</span>
+                             </div>
+                         </div>
+                     </div>
+                 `;
+                 
+                 container.appendChild(suggestion);
+             });
+         }
+
+         // 渲染数据表格
+         function renderDataTable(filteredProblems = mockProblems) {
+             const tbody = document.getElementById('dataTableBody');
+             tbody.innerHTML = '';
+             
+             const severityLabels = {
+                 critical: '严重',
+                 high: '重要', 
+                 medium: '一般',
+                 low: '建议'
+             };
+             
+             const categoryLabels = {
+                 hardware: '硬件问题',
+                 software: '软件问题',
+                 ui: '界面问题',
+                 feature: '功能建议'
+             };
+             
+             filteredProblems.forEach(problem => {
+                 const row = document.createElement('tr');
+                 row.innerHTML = `
+                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${problem.description}</td>
+                     <td class="px-6 py-4 whitespace-nowrap">
+                         <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                             problem.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                             problem.severity === 'high' ? 'bg-yellow-100 text-yellow-800' :
+                             problem.severity === 'medium' ? 'bg-blue-100 text-blue-800' :
+                             'bg-green-100 text-green-800'
+                         }">
+                             ${severityLabels[problem.severity]}
+                         </span>
+                     </td>
+                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${categoryLabels[problem.category]}</td>
+                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${problem.frequency}次</td>
+                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${problem.timestamp}</td>
+                 `;
+                 tbody.appendChild(row);
+             });
+         }
+
+         // 设置事件监听器
+         function setupEventListeners() {
+             // 筛选器事件
+             document.getElementById('severityFilter').addEventListener('change', filterProblems);
+             document.getElementById('categoryFilter').addEventListener('change', filterProblems);
+             
+             // 搜索事件
+             document.getElementById('searchInput').addEventListener('input', searchProblems);
+             
+             // 截图模态框关闭事件
+             document.getElementById('screenshotModal').addEventListener('click', function(e) {
+                 if (e.target === this) {
+                     this.style.display = 'none';
+                 }
+             });
+             
+             // 密码输入框回车事件
+             document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+                 if (e.key === 'Enter') {
+                     checkPassword();
+                 }
+             });
+         }
+
+         // 筛选问题
+         function filterProblems() {
+             const severityFilter = document.getElementById('severityFilter').value;
+             const categoryFilter = document.getElementById('categoryFilter').value;
+             
+             let filtered = mockProblems;
+             
+             if (severityFilter !== 'all') {
+                 filtered = filtered.filter(p => p.severity === severityFilter);
+             }
+             
+             if (categoryFilter !== 'all') {
+                 filtered = filtered.filter(p => p.category === categoryFilter);
+             }
+             
+             renderProblemsList(filtered);
+             renderDataTable(filtered);
+         }
+
+         // 搜索问题
+         function searchProblems() {
+             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+             const filtered = mockProblems.filter(p => 
+                 p.description.toLowerCase().includes(searchTerm) ||
+                 p.user.toLowerCase().includes(searchTerm)
+             );
+             
+             renderDataTable(filtered);
+         }
+
+         // 查看截图
+         function viewScreenshot(screenshotData) {
+             const modal = document.getElementById('screenshotModal');
+             const img = document.getElementById('modalImage');
+             img.src = screenshotData;
+             modal.style.display = 'block';
+         }
+
+         // 页面加载完成后初始化密码检查
+         document.addEventListener('DOMContentLoaded', function() {
+             document.getElementById('passwordInput').focus();
+         });
+
+    </script>
+</body>
+</html>
