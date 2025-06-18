@@ -674,6 +674,7 @@ class WeiboMonitor:
                 comments = self.scrape_weibo_comments(url)
                 all_comments.extend(comments)
                 time.sleep(2)  # 避免请求过快
+            self.comments_data = all_comments
             
             # 分析问题
             print("正在分析问题...")
