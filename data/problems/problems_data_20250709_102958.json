@@ -1,0 +1,287 @@
+[
+  {
+    "id": 18,
+    "description": "我经常提建议",
+    "severity": "high",
+    "category": "software",
+    "user": "健仔按快门",
+    "content": "我经常提建议",
+    "timestamp": "2025-06-16 17:21:00",
+    "likes": 1,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "健仔按快门"
+    ]
+  },
+  {
+    "id": 4,
+    "description": "14p适配耳机WiFi模式",
+    "severity": "medium",
+    "category": "software",
+    "user": "用户7933175724",
+    "content": "14p适配耳机WiFi模式",
+    "timestamp": "2025-06-16 17:30:00",
+    "likes": 10,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "用户7933175724"
+    ]
+  },
+  {
+    "id": 5,
+    "description": "14 系列不可能的，WiFi 模式得 8e 的蓝牙连接芯片才支持",
+    "severity": "medium",
+    "category": "feature",
+    "user": "Jeaceny",
+    "content": "14 系列不可能的，WiFi 模式得 8e 的蓝牙连接芯片才支持",
+    "timestamp": "2025-06-16 17:40:00",
+    "likes": 0,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "Jeaceny"
+    ]
+  },
+  {
+    "id": 7,
+    "description": "睡眠监测为什么有时候手表明明有睡眠时长，但是小米运动健康APP就是不能同步呢？",
+    "severity": "medium",
+    "category": "hardware",
+    "user": "刘小哥L",
+    "content": "睡眠监测为什么有时候手表明明有睡眠时长，但是小米运动健康APP就是不能同步呢？",
+    "timestamp": "2025-06-16 17:21:00",
+    "likes": 19,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "刘小哥L"
+    ]
+  },
+  {
+    "id": 8,
+    "description": "穿戴各系列能不能保持稳定的产品更新频率啊",
+    "severity": "medium",
+    "category": "software",
+    "user": "勿疑也",
+    "content": "穿戴各系列能不能保持稳定的产品更新频率啊。像budspro系列几年不更新，闭门造车。都让大家感知不到你们做产品的在干嘛。",
+    "timestamp": "2025-06-16 17:23:00",
+    "likes": 14,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "勿疑也"
+    ]
+  },
+  {
+    "id": 9,
+    "description": "①手机、平板融合设备中心，显示耳机在哪个设备上延迟太高了吧，能不能优化一下",
+    "severity": "medium",
+    "category": "ui",
+    "user": "Hyper凡创",
+    "content": "①手机、平板融合设备中心，显示耳机在哪个设备上延迟太高了吧，能不能优化一下。②耳机为什么会优先连接上一次连接过的设备？不应该是已解锁的设备吗？",
+    "timestamp": "2025-06-16 18:34:00",
+    "likes": 12,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "Hyper凡创"
+    ]
+  },
+  {
+    "id": 10,
+    "description": "对，我也是觉得，特别是连接音箱听音乐看歌词的时候，音乐总比歌词慢不得不用蓝牙放，搞得蓝牙都比融合设备中心的延迟低了",
+    "severity": "medium",
+    "category": "software",
+    "user": "用户7626595101",
+    "content": "对，我也是觉得，特别是连接音箱听音乐看歌词的时候，音乐总比歌词慢不得不用蓝牙放，搞得蓝牙都比融合设备中心的延迟低了",
+    "timestamp": "2025-06-16 23:53:00",
+    "likes": 0,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "用户7626595101"
+    ]
+  },
+  {
+    "id": 11,
+    "description": "钉一下，14系列的2.1Mbps，小米Buds5Pro提升通透效果和降噪效果",
+    "severity": "medium",
+    "category": "software",
+    "user": "海宝数码菌",
+    "content": "钉一下，14系列的2.1Mbps，小米Buds5Pro提升通透效果和降噪效果",
+    "timestamp": "2025-06-16 17:37:00",
+    "likes": 8,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "海宝数码菌"
+    ]
+  },
+  {
+    "id": 12,
+    "description": "S1Pro能开放第三方表盘吗，现在官方连新表盘都不更新了",
+    "severity": "medium",
+    "category": "hardware",
+    "user": "冼冼睡吧",
+    "content": "S1Pro能开放第三方表盘吗，现在官方连新表盘都不更新了",
+    "timestamp": "2025-06-16 17:35:00",
+    "likes": 5,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "冼冼睡吧"
+    ]
+  },
+  {
+    "id": 13,
+    "description": "停止更新了，另外就算整也没人给你做，保有量小",
+    "severity": "medium",
+    "category": "software",
+    "user": "馬克Twain_",
+    "content": "停止更新了，另外就算整也没人给你做，保有量小",
+    "timestamp": "2025-06-16 19:04:00",
+    "likes": 0,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "馬克Twain_"
+    ]
+  },
+  {
+    "id": 14,
+    "description": "小米15，更新后手机不能显示剩余流量了，这个为啥取消掉？",
+    "severity": "medium",
+    "category": "ui",
+    "user": "lufeihzw",
+    "content": "小米15，更新后手机不能显示剩余流量了，这个为啥取消掉？",
+    "timestamp": "2025-06-17 08:35:00",
+    "likes": 1,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "lufeihzw"
+    ]
+  },
+  {
+    "id": 15,
+    "description": "出了！更新运动健康至3.42.0",
+    "severity": "medium",
+    "category": "software",
+    "user": "云澈Stellar",
+    "content": "出了！更新运动健康至3.42.0",
+    "timestamp": "2025-06-17 01:17:00",
+    "likes": 0,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "云澈Stellar"
+    ]
+  },
+  {
+    "id": 17,
+    "description": "做梦吧，5p这种弄了几年都弄不好5p才出几个月就6p新耳机炸不死你都不叫发挥米的优化水平",
+    "severity": "medium",
+    "category": "software",
+    "user": "秋色烟雨夜未央_",
+    "content": "做梦吧，5p这种弄了几年都弄不好5p才出几个月就6p新耳机炸不死你都不叫发挥米的优化水平",
+    "timestamp": "2025-06-16 23:13:00",
+    "likes": 0,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "秋色烟雨夜未央_"
+    ]
+  },
+  {
+    "id": 1,
+    "description": "最好还能支持无线充电",
+    "severity": "low",
+    "category": "hardware",
+    "user": "tangjun_TJY",
+    "content": "最好还能支持无线充电",
+    "timestamp": "2025-06-16 17:47:00",
+    "likes": 0,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "tangjun_TJY"
+    ]
+  },
+  {
+    "id": 2,
+    "description": "我提一个很大的建议，如果实在做不明白，就兼容AirPods",
+    "severity": "low",
+    "category": "feature",
+    "user": "纯真带师兄",
+    "content": "我提一个很大的建议，如果实在做不明白，就兼容AirPods",
+    "timestamp": "2025-06-16 17:29:00",
+    "likes": 100,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "纯真带师兄"
+    ]
+  },
+  {
+    "id": 3,
+    "description": "不知米家的两款音频眼镜有没有把APP功能整合进系统蓝牙的计划",
+    "severity": "low",
+    "category": "software",
+    "user": "温水煮馒头",
+    "content": "不知米家的两款音频眼镜有没有把APP功能整合进系统蓝牙的计划？目前还是有很多功能需要单独下载米家眼镜APP使用，希望这一波能直接一步到位了",
+    "timestamp": "2025-06-16 17:20:00",
+    "likes": 20,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "温水煮馒头"
+    ]
+  },
+  {
+    "id": 6,
+    "description": "张雷总，希望可以出全智能方形手表，对标apple watch系列，手机，平板都对标苹果了，为什么手表不出一个全智能手表对标apple watch",
+    "severity": "low",
+    "category": "hardware",
+    "user": "故事与引旧友",
+    "content": "张雷总，希望可以出全智能方形手表，对标apple watch系列，手机，平板都对标苹果了，为什么手表不出一个全智能手表对标apple watch？",
+    "timestamp": "2025-06-16 17:33:00",
+    "likes": 27,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "故事与引旧友"
+    ]
+  },
+  {
+    "id": 16,
+    "description": "希望赶紧出buds6pro吧，5pro估计优化也没用，还不如开始做一款好产品",
+    "severity": "low",
+    "category": "software",
+    "user": "失眠的桐华娃子",
+    "content": "希望赶紧出buds6pro吧，5pro估计优化也没用，还不如开始做一款好产品",
+    "timestamp": "2025-06-16 23:05:00",
+    "likes": 3,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "失眠的桐华娃子"
+    ]
+  },
+  {
+    "id": 19,
+    "description": "人家不都说了嘛，收集了不低于300多条建议和问题，作为主管不得一个个安排去核对改善啊",
+    "severity": "low",
+    "category": "software",
+    "user": "Mixl_i",
+    "content": "人家不都说了嘛，收集了不低于300多条建议和问题，作为主管不得一个个安排去核对改善啊。等等后面具体落地的情况吧",
+    "timestamp": "2025-06-18 10:43:00",
+    "likes": 0,
+    "frequency": 1,
+    "suggestion": "建议可以调用AI生成",
+    "affected_users": [
+      "Mixl_i"
+    ]
+  }
+]

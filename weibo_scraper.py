@@ -17,6 +17,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 import jieba
 import jieba.analyse
 from collections import Counter
@@ -62,6 +64,7 @@ class WeiboMonitor:
         chrome_options.add_argument('--window-size=1920,1080')
         chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
         
+        # 使用 webdriver-manager 自动管理 ChromeDriver，这步可能有点慢，第一次会下载
         self.driver = webdriver.Chrome(options=chrome_options)
         return self.driver
     
@@ -81,144 +84,60 @@ class WeiboMonitor:
         
         try:
             self.driver.get(weibo_url)
-            time.sleep(3)
+            time.sleep(5)
             
             # 等待评论区加载
             wait = WebDriverWait(self.driver, 10)
             
             comments = []
             comment_count = 0
+            processed_comments = set()  # 用于跟踪已处理的评论
+            scroll_attempts = 0
+            max_scroll_attempts = 20  # 最大滚动尝试次数
+            no_new_comments_count = 0  # 连续无新评论的次数
             
-            # 滚动页面加载更多评论
-            while comment_count < max_comments:
+            print(f"开始抓取评论，目标数量: {max_comments}")
+            
+            # 智能滚动加载更多评论
+            while comment_count < max_comments and scroll_attempts < max_scroll_attempts:
                 # 查找评论元素
-                comment_elements = self.driver.find_elements(By.CSS_SELECTOR, "div.text > span")
+                comment_elements = self.driver.find_elements(By.CSS_SELECTOR, "div.text > span, div[class*='Comment_'] div.text > span")
                 
-                for element in comment_elements[comment_count:]:
+                print(f"当前找到 {len(comment_elements)} 个评论元素，已处理 {len(processed_comments)} 条")
+                
+                # 处理新发现的评论
+                new_comments_found = False
+                for element in comment_elements:
                     if comment_count >= max_comments:
                         break
                     
                     try:
                         # 提取评论内容
-                        # 确保只提取span标签内的文本，排除回复链接
                         comment_text = element.text.strip()
                         
-                        # 根据结构，如果存在回复，回复内容在'Comment_associate_text'类中
-                        # 确保我们只获取顶层评论，而不是回复
-                        # 根据结构，确保只提取纯评论内容，排除回复链接或其他无关文本
-                        # 检查是否存在明确的回复标志或者该span元素是回复的一部分
-                        # 检查当前评论是否是回复，如果是则跳过
-                        # 检查同级或父级元素中是否存在明显的回复标志
-                        if element.find_elements(By.XPATH, "./following-sibling::a[contains(@class, 'Comment_associate_text')]" ):
+                        # 生成评论的唯一标识（基于内容和位置）
+                        comment_hash = f"{comment_text[:50]}_{element.location['y']}"
+                        
+                        # 跳过已处理的评论
+                        if comment_hash in processed_comments:
                             continue
                         
-                        # 进一步过滤，确保不是转发或包含“回复”关键字的评论
+                        # 检查是否是回复
+                        if element.find_elements(By.XPATH, "./following-sibling::a[contains(@class, 'Comment_associate_text')]"):
+                            continue
+                        
+                        # 过滤无效评论
                         if not comment_text or len(comment_text) < 5 or "回复" in comment_text or "//转发了" in comment_text:
                             continue
                         
-                        # 提取用户信息 - 基于实际HTML结构
-                        try:
-                            # 在父容器中查找用户链接
-                            user_element = element.find_element(By.XPATH, "../..//a[contains(@class, 'ALink_default_2ibt1')]")
-                            username = user_element.text.strip() if user_element.text else "匿名用户"
-                            # 如果没有文本内容，尝试从to属性中提取用户名
-                            if not username or username == "匿名用户":
-                                to_attr = user_element.get_attribute('to')
-                                if to_attr and '/u/' in to_attr:
-                                    username = to_attr.split('/u/')[-1]
-                        except:
-                            try:
-                                # 备用方案：查找所有用户链接
-                                user_elements = element.find_elements(By.XPATH, "../..//a[contains(@href, '/u/')]")
-                                if user_elements:
-                                    user_element = user_elements[0]
-                                    username = user_element.text.strip() if user_element.text else "匿名用户"
-                                    if not username or username == "匿名用户":
-                                        href = user_element.get_attribute('href')
-                                        if href and '/u/' in href:
-                                            username = href.split('/u/')[-1].split('?')[0]
-                                else:
-                                    username = "匿名用户"
-                            except:
-                                username = "匿名用户"
+                        # 提取用户信息
+                        username = self._extract_username(element)
                         
-                        # 提取时间戳 - 基于实际HTML结构
-                        try:
-                            # 查找评论容器后面的info区域
-                            info_container = element.find_element(By.XPATH, "../..//div[contains(@class, 'info')]")
-                            # 在info容器中查找包含时间的div
-                            time_divs = info_container.find_elements(By.XPATH, ".//div[contains(text(), '-') and contains(text(), ':')]")
-                            
-                            if time_divs:
-                                timestamp_text = time_divs[0].text.strip()
-                                # 处理时间格式 "25-5-19 11:00" -> "2025-05-19 11:00:00"
-                                if timestamp_text and re.match(r'\d+-\d+-\d+\s+\d+:\d+', timestamp_text):
-                                    parts = timestamp_text.split()
-                                    if len(parts) >= 2:
-                                        date_part = parts[0]  # "25-5-19"
-                                        time_part = parts[1]  # "11:00"
-                                        
-                                        # 转换日期格式
-                                        date_nums = date_part.split('-')
-                                        if len(date_nums) == 3:
-                                            year = '20' + date_nums[0] if len(date_nums[0]) == 2 else date_nums[0]
-                                            month = date_nums[1].zfill(2)
-                                            day = date_nums[2].zfill(2)
-                                            timestamp = f"{year}-{month}-{day} {time_part}:00"
-                                        else:
-                                            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                    else:
-                                        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                else:
-                                    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                            else:
-                                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        except:
-                            # 备用方案：在整个页面中查找时间信息
-                            try:
-                                # 根据评论内容查找对应的时间戳
-                                time_element = self.driver.find_element(By.XPATH, f"//div[contains(text(), '{comment_text[:20]}')]/ancestor::div[contains(@class, 'Comment_')]/descendant::div[contains(text(), '-') and contains(text(), ':')]")
-                                timestamp_text = time_element.text.strip()
-                                if timestamp_text and '-' in timestamp_text and ':' in timestamp_text:
-                                    timestamp = timestamp_text
-                                else:
-                                    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                            except:
-                                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        # 提取时间戳
+                        timestamp = self._extract_timestamp(element, comment_text)
                         
-
-                        # 提取点赞数 - 基于HTML结构
-                        try:
-                            # 查找点赞数容器
-                            like_element = element.find_element(By.XPATH, "../..//span[contains(@class, 'woo-like-count')]")
-                            likes_text = like_element.text.strip()
-                            # 处理点赞数格式，可能包含"万"等单位
-                            if likes_text:
-                                if '万' in likes_text:
-                                    likes = int(float(likes_text.replace('万', '')) * 10000)
-                                elif 'k' in likes_text.lower():
-                                    likes = int(float(likes_text.lower().replace('k', '')) * 1000)
-                                else:
-                                    likes = int(likes_text) if likes_text.isdigit() else 0
-                            else:
-                                likes = 0
-                        except:
-                            try:
-                                # 备用方案：查找所有可能的点赞数元素
-                                like_elements = element.find_elements(By.XPATH, "../..//span[contains(@class, 'like') or contains(@class, 'count')]")
-                                likes = 0
-                                for like_elem in like_elements:
-                                    text = like_elem.text.strip()
-                                    if text and (text.isdigit() or '万' in text or 'k' in text.lower()):
-                                        if '万' in text:
-                                            likes = int(float(text.replace('万', '')) * 10000)
-                                        elif 'k' in text.lower():
-                                            likes = int(float(text.lower().replace('k', '')) * 1000)
-                                        else:
-                                            likes = int(text) if text.isdigit() else 0
-                                        break
-                            except:
-                                likes = 0
+                        # 提取点赞数
+                        likes = self._extract_likes(element)
                         
                         comment_data = {
                             'id': comment_count + 1,
@@ -230,27 +149,242 @@ class WeiboMonitor:
                         }
                         
                         comments.append(comment_data)
+                        processed_comments.add(comment_hash)
                         comment_count += 1
+                        new_comments_found = True
+                        
+                        if comment_count % 10 == 0:
+                            print(f"已提取 {comment_count} 条评论")
                         
                     except Exception as e:
                         print(f"提取评论时出错: {e}")
                         continue
                 
-                # 滚动页面
-                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(2)
+                # 智能滚动策略
+                if not new_comments_found:
+                    no_new_comments_count += 1
+                    print(f"未发现新评论，连续次数: {no_new_comments_count}")
+                    
+                    # 如果连续3次没有新评论，尝试更激进的滚动
+                    if no_new_comments_count >= 3:
+                        print("尝试更激进的滚动策略...")
+                        self._aggressive_scroll()
+                        no_new_comments_count = 0
+                    else:
+                        # 尝试点击"查看更多"按钮
+                        if self._try_click_load_more():
+                            print("点击了加载更多按钮")
+                            no_new_comments_count = 0
+                        else:
+                            # 普通滚动
+                            self._smart_scroll()
+                else:
+                    no_new_comments_count = 0
+                    # 发现新评论后，等待一下让页面稳定
+                    time.sleep(1)
                 
-                # 检查是否还有更多评论
-                new_comment_elements = self.driver.find_elements(By.CSS_SELECTOR, "div.text > span")
-                if len(new_comment_elements) <= len(comment_elements):
-                    break
+                scroll_attempts += 1
+                time.sleep(2)  # 等待页面加载
             
             self.comments_data = comments
+            print(f"总共抓取到 {len(comments)} 条评论，滚动尝试 {scroll_attempts} 次")
             return comments
             
         except Exception as e:
             print(f"抓取评论时发生错误: {e}")
             return []
+    
+    def _extract_username(self, element) -> str:
+        """提取用户名"""
+        try:
+            # 在父容器中查找用户链接
+            user_element = element.find_element(By.XPATH, "../..//a[contains(@class, 'ALink_default_2ibt1')]")
+            username = user_element.text.strip() if user_element.text else "匿名用户"
+            # 如果没有文本内容，尝试从to属性中提取用户名
+            if not username or username == "匿名用户":
+                to_attr = user_element.get_attribute('to')
+                if to_attr and '/u/' in to_attr:
+                    username = to_attr.split('/u/')[-1]
+        except:
+            try:
+                # 备用方案：查找所有用户链接
+                user_elements = element.find_elements(By.XPATH, "../..//a[contains(@href, '/u/')]")
+                if user_elements:
+                    user_element = user_elements[0]
+                    username = user_element.text.strip() if user_element.text else "匿名用户"
+                    if not username or username == "匿名用户":
+                        href = user_element.get_attribute('href')
+                        if href and '/u/' in href:
+                            username = href.split('/u/')[-1].split('?')[0]
+                else:
+                    username = "匿名用户"
+            except:
+                username = "匿名用户"
+        return username
+    
+    def _extract_timestamp(self, element, comment_text: str) -> str:
+        """提取时间戳"""
+        try:
+            # 查找评论容器后面的info区域
+            info_container = element.find_element(By.XPATH, "../..//div[contains(@class, 'info')]")
+            # 在info容器中查找包含时间的div
+            time_divs = info_container.find_elements(By.XPATH, ".//div[contains(text(), '-') and contains(text(), ':')]")
+            
+            if time_divs:
+                timestamp_text = time_divs[0].text.strip()
+                # 处理时间格式 "25-5-19 11:00" -> "2025-05-19 11:00:00"
+                if timestamp_text and re.match(r'\d+-\d+-\d+\s+\d+:\d+', timestamp_text):
+                    parts = timestamp_text.split()
+                    if len(parts) >= 2:
+                        date_part = parts[0]  # "25-5-19"
+                        time_part = parts[1]  # "11:00"
+                        
+                        # 转换日期格式
+                        date_nums = date_part.split('-')
+                        if len(date_nums) == 3:
+                            year = '20' + date_nums[0] if len(date_nums[0]) == 2 else date_nums[0]
+                            month = date_nums[1].zfill(2)
+                            day = date_nums[2].zfill(2)
+                            timestamp = f"{year}-{month}-{day} {time_part}:00"
+                        else:
+                            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    else:
+                        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        except:
+            # 备用方案：在整个页面中查找时间信息
+            try:
+                if self.driver:
+                    # 根据评论内容查找对应的时间戳
+                    time_element = self.driver.find_element(By.XPATH, f"//div[contains(text(), '{comment_text[:20]}')]/ancestor::div[contains(@class, 'Comment_')]/descendant::div[contains(text(), '-') and contains(text(), ':')]")
+                    timestamp_text = time_element.text.strip()
+                    if timestamp_text and '-' in timestamp_text and ':' in timestamp_text:
+                        timestamp = timestamp_text
+                    else:
+                        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        return timestamp
+    
+    def _extract_likes(self, element) -> int:
+        """提取点赞数"""
+        try:
+            # 查找点赞数容器
+            like_element = element.find_element(By.XPATH, "../..//span[contains(@class, 'woo-like-count')]")
+            likes_text = like_element.text.strip()
+            # 处理点赞数格式，可能包含"万"等单位
+            if likes_text:
+                if '万' in likes_text:
+                    likes = int(float(likes_text.replace('万', '')) * 10000)
+                elif 'k' in likes_text.lower():
+                    likes = int(float(likes_text.lower().replace('k', '')) * 1000)
+                else:
+                    likes = int(likes_text) if likes_text.isdigit() else 0
+            else:
+                likes = 0
+        except:
+            try:
+                # 备用方案：查找所有可能的点赞数元素
+                like_elements = element.find_elements(By.XPATH, "../..//span[contains(@class, 'like') or contains(@class, 'count')]")
+                likes = 0
+                for like_elem in like_elements:
+                    text = like_elem.text.strip()
+                    if text and (text.isdigit() or '万' in text or 'k' in text.lower()):
+                        if '万' in text:
+                            likes = int(float(text.replace('万', '')) * 10000)
+                        elif 'k' in text.lower():
+                            likes = int(float(text.lower().replace('k', '')) * 1000)
+                        else:
+                            likes = int(text) if text.isdigit() else 0
+                        break
+            except:
+                likes = 0
+        return likes
+    
+    def _smart_scroll(self):
+        """智能滚动策略"""
+        if not self.driver:
+            return
+            
+        try:
+            # 获取当前页面高度
+            current_height = self.driver.execute_script("return document.body.scrollHeight")
+            
+            # 滚动到页面底部
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
+            
+            # 检查是否有新内容加载
+            new_height = self.driver.execute_script("return document.body.scrollHeight")
+            if new_height > current_height:
+                print(f"页面高度增加: {current_height} -> {new_height}")
+            
+            # 尝试滚动到评论区
+            comment_section = self.driver.find_elements(By.CSS_SELECTOR, "div[class*='Comment_']")
+            if comment_section:
+                self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'end'});", comment_section[-1])
+                time.sleep(1)
+                
+        except Exception as e:
+            print(f"智能滚动出错: {e}")
+    
+    def _aggressive_scroll(self):
+        """激进滚动策略"""
+        if not self.driver:
+            return
+            
+        try:
+            # 多次快速滚动
+            for i in range(3):
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(0.5)
+            
+            # 尝试滚动到特定位置
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.8);")
+            time.sleep(1)
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"激进滚动出错: {e}")
+    
+    def _try_click_load_more(self) -> bool:
+        """尝试点击加载更多按钮"""
+        if not self.driver:
+            return False
+            
+        try:
+            # 查找各种可能的加载更多按钮
+            load_more_selectors = [
+                "//span[contains(text(), '查看更多')]",
+                "//span[contains(text(), '加载更多')]",
+                "//a[contains(text(), '查看更多')]",
+                "//a[contains(text(), '加载更多')]",
+                "//div[contains(@class, 'load') and contains(@class, 'more')]",
+                "//button[contains(text(), '更多')]"
+            ]
+            
+            for selector in load_more_selectors:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                    for element in elements:
+                        if element.is_displayed() and element.is_enabled():
+                            self.driver.execute_script("arguments[0].click();", element)
+                            time.sleep(2)
+                            return True
+                except:
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            print(f"点击加载更多按钮出错: {e}")
+            return False
     
     def take_screenshot(self, element) -> str:
         """
@@ -310,7 +444,6 @@ class WeiboMonitor:
                     'user': comment['user'],
                     'content': content,
                     'timestamp': comment['timestamp'],
-                    'screenshot': comment['screenshot'],
                     'likes': comment['likes'],
                     'frequency': 1,  # 会在后续统计中更新
                     'suggestion': suggestion
@@ -517,7 +650,7 @@ class WeiboMonitor:
             'uiCount': category_stats.get('ui', 0),
             'featureCount': category_stats.get('feature', 0),
             'problems': problems[:20],  # 限制显示前20个问题
-            'topSuggestions': problems[:5]  # 前5个建议
+            'topSuggestions': self.summarize_top_problems_with_llm(problems, top_n=5)
         }
         
         # 替换模板中的数据
@@ -543,6 +676,7 @@ class WeiboMonitor:
         """
         # 替换JavaScript中的模拟数据
         problems_json = json.dumps(data['problems'], ensure_ascii=False, indent=4)
+        top_suggestions_json = json.dumps(data['topSuggestions'], ensure_ascii=False, indent=4)
         
         # 更新统计数据
         replacements = {
@@ -568,7 +702,12 @@ class WeiboMonitor:
         mock_data_pattern = r'const mockProblems = \[.*?\];'
         new_mock_data = f'const mockProblems = {problems_json};'
         result = re.sub(mock_data_pattern, new_mock_data, result, flags=re.DOTALL)
-        
+
+        # 替换topSuggestions数据
+        mock_suggestions_pattern = r'const topSuggestions = \[.*?\];'
+        new_mock_suggestions = f'const topSuggestions = {top_suggestions_json};'
+        result = re.sub(mock_suggestions_pattern, new_mock_suggestions, result, flags=re.DOTALL)
+
         return result
     
     def get_simple_html_template(self) -> str:
@@ -723,6 +862,53 @@ class WeiboMonitor:
             json.dump(problems, f, ensure_ascii=False, indent=2)
         
         print(f"原始数据已保存: {comments_file}, {problems_file}")
+
+    def summarize_top_problems_with_llm(self, problems: List[Dict], top_n: int = 5) -> List[Dict]:
+        """
+        使用LLM对所有问题进行总结，输出top_n个主要问题
+        """
+        # 构造输入
+        problem_texts = [f"{i+1}. {p['description']}（类型：{p['category']}，严重程度：{p['severity']}，频率：{p['frequency']}）" for i, p in enumerate(problems)]
+        prompt = (
+            "以下是用户反馈的所有问题，请你作为产品经理，帮我总结出5个最主要的、最具代表性的问题，"
+            "每个问题用一句话描述，并尽量覆盖不同类型和严重程度，输出格式为有序列表：\n"
+            + "\n".join(problem_texts)
+            + "\n\n请用如下格式输出：\n1. xxx\n2. xxx\n3. xxx\n4. xxx\n5. xxx"
+        )
+
+        # 调用LLM
+        client = OpenAI(
+            api_key=DEEPSEEK_CONFIG['api_key'],
+            base_url=DEEPSEEK_CONFIG['api_base']
+        )
+        try:
+            response = client.chat.completions.create(
+                model=DEEPSEEK_CONFIG['model'],
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=DEEPSEEK_CONFIG['max_tokens'],
+                temperature=DEEPSEEK_CONFIG['temperature'],
+                stream=False
+            )
+            summary_text = response.choices[0].message.content
+            # 解析LLM输出
+            if summary_text:
+                lines = [line.strip() for line in summary_text.split('\n') if line.strip()]
+            else:
+                lines = []
+            top5 = []
+            for idx, line in enumerate(lines):
+                if idx >= top_n:
+                    break
+                # 去掉序号
+                desc = line
+                if '.' in line[:3]:
+                    desc = line.split('.', 1)[1].strip()
+                top5.append({'id': idx+1, 'description': desc})
+            return top5
+        except Exception as e:
+            print(f"LLM 总结主问题失败: {e}")
+            # 回退到原有前5条
+            return [{'id': i+1, 'description': p['description']} for i, p in enumerate(problems[:top_n])]
 
 
 def main():

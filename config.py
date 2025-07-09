@@ -24,7 +24,7 @@ MONITOR_URLS = [
     # 可以添加更多特定微博链接
 ]
 
-# 监控时间配置
+# 监控时间配置，暂未实现
 MONITOR_SCHEDULE = {
     "hour": 9,        # 每日监控时间（小时）
     "minute": 0,      # 每日监控时间（分钟）
@@ -52,9 +52,9 @@ SCRAPING_CONFIG = {
 # ==================== 分析配置 ====================
 # 问题识别关键词
 PROBLEM_KEYWORDS = [
-            '问题', '故障', 'bug', 'Bug', 'BUG',
-            '不能', '无法', '失效', '错误', '异常',
-            '卡顿', '死机', '黑屏', '白屏', '闪退',
+            '问题', '故障', 'bug', 'Bug', 'BUG', '提升',
+            '不能', '无法', '失效', '错误', '异常', '不如',
+            '卡顿', '死机', '黑屏', '白屏', '闪退', '延迟',
             '电池', '续航', '发热', '充电', '痛点'
             '连接', '蓝牙', 'wifi', 'WiFi', 'WIFI', '不喜欢',
             '建议', '希望', '改进', '优化', '升级', '需求', '更新'
@@ -91,7 +91,7 @@ ANALYSIS_CONFIG = {
 REPORT_CONFIG = {
     "max_problems_display": 20,     # 报告中显示的最大问题数
     "max_suggestions": 5,           # 最大建议数
-    "include_screenshots": True,    # 是否包含截图
+    "include_screenshots": False,   # 是否包含截图
     "enable_password_protection": True,  # 是否启用密码保护
     "report_password": "xiaomi2024",     # 报告访问密码
 }
